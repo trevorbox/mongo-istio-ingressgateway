@@ -4,7 +4,7 @@ metadata:
   name: mongodb
 spec:
   gateways:
-  - mongodb
+  - {{ control_plane_namespace }}/mongodb
   hosts:
   - '*'
   tcp:

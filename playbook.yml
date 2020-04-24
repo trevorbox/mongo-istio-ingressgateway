@@ -36,15 +36,16 @@
         src: "{{ item.path }}"
       loop: "{{ app_files.files }}"
 
-    - name: Discover istio deployment files
-      find:
-        paths: "{{ istio_src_dir }}"
-        patterns: "*.yml,*.yaml"
-      register: istio_files
+
+    - name: Deploy istio gateway
+      k8s:
+        state: present
+        namespace: "{{ control_plane_namespace }}"
+        src: "{{ istio_src_dir }}/gateway-mongodb.yml"
 
     - name: Deploy istio gateway and virtualservices
       k8s:
         state: present
         namespace: "{{ k8s_namespace }}"
-        src: "{{ item.path }}"
-      loop: "{{ istio_files.files }}"
+        definition: "{{ lookup('template', '{{ istio_src_dir }}/templates/virtualservice-mongodb.j2') }}"
+
