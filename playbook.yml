@@ -1,0 +1,50 @@
+---
+- name: install mongodb for external bookinfo application to consume
+  hosts: localhost
+  gather_facts: false
+  vars:
+    - k8s_namespace: mongodb
+    - istio_src_dir: istio
+    - app_src_dir: app
+    - control_plane_name: mongo-install
+    - control_plane_namespace: istio-system-mongodb
+    - bookinfo_password: redhat
+  tasks:
+    - name: Create a k8s namespace
+      k8s:
+        name: "{{ k8s_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Opt into the Service Mesh Control Plane with ServiceMeshMember (your account needs the maistra-user role granted on the control plane to do this)
+      k8s:
+        state: present
+        namespace: "{{ k8s_namespace }}"
+        definition: "{{ lookup('template', '{{ istio_src_dir }}/templates/servicemeshmember-default.j2') }}"
+
+    - name: Discover app deployment files
+      find:
+        paths: "{{ app_src_dir }}"
+        patterns: "*.yml,*.yaml"
+      register: app_files
+
+    - name: Deploy mongo
+      k8s:
+        state: present
+        namespace: "{{ k8s_namespace }}"
+        src: "{{ item.path }}"
+      loop: "{{ app_files.files }}"
+
+    - name: Discover istio deployment files
+      find:
+        paths: "{{ istio_src_dir }}"
+        patterns: "*.yml,*.yaml"
+      register: istio_files
+
+    - name: Deploy istio gateway and virtualservices
+      k8s:
+        state: present
+        namespace: "{{ k8s_namespace }}"
+        src: "{{ item.path }}"
+      loop: "{{ istio_files.files }}"

@@ -1,0 +1,34 @@
+- name: Install Default Gateway Service Mesh Control Plane
+  hosts: localhost
+  gather_facts: no
+  vars:
+    - control_plane_namespace: istio-system-mongodb
+    - control_plane_src_dir: control-plane
+    - control_plane_name: mongo-install
+  tasks:
+    - name: Create a k8s namespace
+      k8s:
+        name: "{{ control_plane_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Deploy Service Mesh Control Plane
+      k8s:
+        state: present
+        namespace: "{{ control_plane_namespace }}"
+        definition: "{{ lookup('template', '{{ control_plane_src_dir }}/mongo-ingressgateway/templates/servicemeshcontrolplane.j2') }}"
+
+
+    - name: Wait for successful deployment of Control Plane
+      k8s_info:
+        api_version: maistra.io/v1
+        name: "{{ control_plane_name }}"
+        kind: ServiceMeshControlPlane
+        namespace: "{{ control_plane_namespace }}"
+      register: control_plane_info
+      until: control_plane_info.resources[0].status.annotations.readyComponentCount is defined and control_plane_info.resources[0].status.annotations.readyComponentCount == "9/9"
+      retries: 10
+      delay: 30
+      ignore_errors: true
+
